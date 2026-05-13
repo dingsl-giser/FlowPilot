@@ -183,6 +183,22 @@ return {
   }).some((step) => step.key === 'phone-verification'), false);
 });
 
+test('sidepanel display-only phone verification pending style stays muted', () => {
+  const css = fs.readFileSync('sidepanel/sidepanel.css', 'utf8');
+  const indicatorRule = css.match(/\.step-row\.step-display-only \.step-indicator\s*\{[^}]+\}/)?.[0] || '';
+  const buttonRule = css.match(/\.step-row\.step-display-only \.step-btn:disabled\s*\{[^}]+\}/)?.[0] || '';
+  const completedButtonRule = css.match(/\.step-row\.step-display-only\.completed \.step-btn:disabled\s*\{[^}]+\}/)?.[0] || '';
+
+  assert.match(indicatorRule, /background:\s*var\(--bg-surface\)/);
+  assert.match(indicatorRule, /border-color:\s*var\(--border-subtle\)/);
+  assert.match(buttonRule, /color:\s*var\(--text-muted\)/);
+  assert.match(buttonRule, /background:\s*var\(--bg-base\)/);
+  assert.match(buttonRule, /opacity:\s*0\.45/);
+  assert.doesNotMatch(indicatorRule, /blue-soft/);
+  assert.doesNotMatch(buttonRule, /blue-soft|text-secondary|opacity:\s*0\.9/);
+  assert.match(completedButtonRule, /color:\s*var\(--green\)/);
+});
+
 test('sidepanel phone verification display changes without changing executable step ids', () => {
   const bundle = [
     extractFunction('normalizeSignupMethod'),
