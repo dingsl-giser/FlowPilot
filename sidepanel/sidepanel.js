@@ -14321,11 +14321,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     case 'DATA_UPDATED': {
       syncLatestState(message.payload);
-      const shouldRefreshDisplaySteps = (
-        Object.prototype.hasOwnProperty.call(message.payload, 'displayStepStatuses')
-        || Object.prototype.hasOwnProperty.call(message.payload, 'nodeStatuses')
-        || Object.prototype.hasOwnProperty.call(message.payload, 'currentNodeId')
-      );
+      const shouldRefreshDisplaySteps = Object.prototype.hasOwnProperty.call(message.payload, 'displayStepStatuses');
       if (message.payload.operationDelayEnabled !== undefined && typeof applyOperationDelayState === 'function') {
         applyOperationDelayState(message.payload);
       }

@@ -8295,18 +8295,8 @@ async function setDisplayStepStatus(stepKey, status, stateOverride = null) {
 
   const updates = { displayStepStatuses: nextStatuses };
   await setState(updates);
-  const latestState = await getState();
-  const latestDisplayStepStatuses = getDisplayStepStatuses(latestState);
-  broadcastDataUpdate({
-    displayStepStatuses: latestDisplayStepStatuses,
-    nodeStatuses: latestState?.nodeStatuses && typeof latestState.nodeStatuses === 'object'
-      ? latestState.nodeStatuses
-      : {},
-    currentNodeId: typeof latestState?.currentNodeId === 'string'
-      ? latestState.currentNodeId
-      : '',
-  });
-  return latestDisplayStepStatuses;
+  broadcastDataUpdate(updates);
+  return nextStatuses;
 }
 
 function getFirstUnfinishedStep(statuses = {}, stateOverride = null) {
