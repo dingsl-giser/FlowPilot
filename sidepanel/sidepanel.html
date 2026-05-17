@@ -113,13 +113,12 @@
       <div class="data-row">
         <span class="data-label">注册</span>
         <select id="select-flow" class="data-select" aria-label="Flow 选择">
-          <option value="codex" selected>codex</option>
-          <option value="pending-1" disabled>kiro</option>
-          <option value="pending-2" disabled>待添加</option>
+          <option value="openai" selected>Codex / OpenAI</option>
+          <option value="kiro">Kiro</option>
         </select>
       </div>
       <div class="data-row">
-        <span class="data-label">来源</span>
+        <span id="label-source-selector" class="data-label">来源</span>
         <select id="select-panel-mode" class="data-select">
           <option value="cpa">CPA 面板</option>
           <option value="sub2api">SUB2API</option>
@@ -241,6 +240,38 @@
             data-hide-label="隐藏 Codex2API 管理密钥" aria-label="显示 Codex2API 管理密钥"
             title="显示 Codex2API 管理密钥"></button>
         </div>
+      </div>
+      <div class="data-row" id="row-kiro-rs-url" style="display:none;">
+        <span class="data-label">kiro.rs</span>
+        <input type="text" id="input-kiro-rs-url" class="data-input"
+          placeholder="https://kiro.leftcode.xyz/admin" />
+      </div>
+      <div class="data-row" id="row-kiro-rs-key" style="display:none;">
+        <span class="data-label">API Key</span>
+        <div class="input-with-icon">
+          <input type="password" id="input-kiro-rs-key" class="data-input data-input-with-icon"
+            placeholder="请输入 kiro.rs API Key" />
+          <button id="btn-toggle-kiro-rs-key" class="input-icon-btn" type="button"
+            data-password-toggle="input-kiro-rs-key" data-show-label="显示 kiro.rs API Key"
+            data-hide-label="隐藏 kiro.rs API Key" aria-label="显示 kiro.rs API Key"
+            title="显示 kiro.rs API Key"></button>
+        </div>
+      </div>
+      <div class="data-row" id="row-kiro-region" style="display:none;">
+        <span class="data-label">区域</span>
+        <input type="text" id="input-kiro-region" class="data-input" placeholder="us-east-1" />
+      </div>
+      <div class="data-row" id="row-kiro-device-code" style="display:none;">
+        <span class="data-label">设备码</span>
+        <span id="display-kiro-device-code" class="data-value mono">未生成</span>
+      </div>
+      <div class="data-row" id="row-kiro-login-url" style="display:none;">
+        <span class="data-label">登录地址</span>
+        <span id="display-kiro-login-url" class="data-value mono">未生成</span>
+      </div>
+      <div class="data-row" id="row-kiro-upload-status" style="display:none;">
+        <span class="data-label">上传状态</span>
+        <span id="display-kiro-upload-status" class="data-value mono">未开始</span>
       </div>
       <div class="data-row module-divider-start" id="row-custom-password">
         <span class="data-label">账户密码</span>
@@ -1809,6 +1840,8 @@
   <script src="../hotmail-utils.js"></script>
   <script src="../luckmail-utils.js"></script>
   <script src="../yyds-mail-utils.js"></script>
+  <script src="../shared/flow-registry.js"></script>
+  <script src="../shared/settings-schema.js"></script>
   <script src="../shared/flow-capabilities.js"></script>
   <script src="../data/step-definitions.js"></script>
   <script src="update-service.js"></script>
