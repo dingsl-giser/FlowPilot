@@ -113,3 +113,77 @@ return {
   });
   assert.deepEqual(api.calls[1], { type: 'render', stepIds: [88] });
 });
+
+test('updatePanelModeUI reapplies dynamic Plus and phone visibility after flow group visibility', () => {
+  const bundle = [
+    extractFunction(sidepanelSource, 'updatePanelModeUI'),
+  ].join('\n');
+
+  const api = new Function(`
+const calls = [];
+let latestState = {
+  activeFlowId: 'openai',
+  flowId: 'openai',
+  panelMode: 'cpa',
+};
+const DEFAULT_ACTIVE_FLOW_ID = 'openai';
+const selectFlow = { value: '' };
+const selectPanelMode = { value: '' };
+function normalizeFlowId(value = '', fallback = DEFAULT_ACTIVE_FLOW_ID) {
+  return String(value || fallback || DEFAULT_ACTIVE_FLOW_ID).trim().toLowerCase() || DEFAULT_ACTIVE_FLOW_ID;
+}
+function normalizePanelMode(value = '', fallback = 'cpa') {
+  return String(value || fallback || 'cpa').trim().toLowerCase() || 'cpa';
+}
+function getSelectedFlowId() {
+  return latestState.activeFlowId;
+}
+function getSelectedSourceId() {
+  return 'cpa';
+}
+function renderFlowSelectorOptions(flowId) {
+  calls.push({ type: 'render-flow', flowId });
+}
+function renderSourceSelectorOptions(flowId, sourceId) {
+  calls.push({ type: 'render-source', flowId, sourceId });
+}
+function applyFlowSettingsGroupVisibility(visibleGroupIds) {
+  calls.push({ type: 'groups', visibleGroupIds: [...visibleGroupIds] });
+}
+function updatePlusModeUI() {
+  calls.push({ type: 'plus' });
+}
+function updatePhoneVerificationSettingsUI() {
+  calls.push({ type: 'phone' });
+}
+function resolveCurrentSidepanelCapabilities() {
+  return {
+    visibleGroupIds: ['openai-account', 'openai-plus', 'openai-phone'],
+    effectivePanelMode: 'cpa',
+    panelMode: 'cpa',
+    effectiveSourceId: 'cpa',
+  };
+}
+const document = {
+  querySelector() {
+    return null;
+  },
+};
+${bundle}
+return {
+  calls,
+  updatePanelModeUI,
+  selectFlow,
+  selectPanelMode,
+};
+`)();
+
+  api.updatePanelModeUI();
+
+  assert.deepEqual(
+    api.calls.map((entry) => entry.type),
+    ['render-flow', 'render-source', 'groups', 'plus', 'phone']
+  );
+  assert.equal(api.selectFlow.value, 'openai');
+  assert.equal(api.selectPanelMode.value, 'cpa');
+});

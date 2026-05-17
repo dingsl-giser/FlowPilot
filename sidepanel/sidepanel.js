@@ -12025,19 +12025,25 @@ function updatePanelModeUI() {
   const effectiveSourceId = capabilityState?.effectiveSourceId || sourceId;
   renderFlowSelectorOptions(activeFlowId);
   renderSourceSelectorOptions(activeFlowId, effectiveSourceId);
-  const visibleGroupIds = Array.isArray(capabilityState?.visibleGroupIds)
-    ? capabilityState.visibleGroupIds
-    : [];
-  if (typeof applyFlowSettingsGroupVisibility === 'function') {
-    applyFlowSettingsGroupVisibility(visibleGroupIds);
-  }
-  const panelMode = capabilityState?.effectivePanelMode || capabilityState?.panelMode || rawPanelMode;
   if (selectFlow) {
     selectFlow.value = activeFlowId;
   }
   if (selectPanelMode) {
     selectPanelMode.value = effectiveSourceId;
   }
+  const visibleGroupIds = Array.isArray(capabilityState?.visibleGroupIds)
+    ? capabilityState.visibleGroupIds
+    : [];
+  if (typeof applyFlowSettingsGroupVisibility === 'function') {
+    applyFlowSettingsGroupVisibility(visibleGroupIds);
+  }
+  if (typeof updatePlusModeUI === 'function') {
+    updatePlusModeUI();
+  }
+  if (typeof updatePhoneVerificationSettingsUI === 'function') {
+    updatePhoneVerificationSettingsUI();
+  }
+  const panelMode = capabilityState?.effectivePanelMode || capabilityState?.panelMode || rawPanelMode;
 
   const useCodex2Api = panelMode === 'codex2api';
   const step9Btn = document.querySelector('.step-btn[data-step-key="platform-verify"]');

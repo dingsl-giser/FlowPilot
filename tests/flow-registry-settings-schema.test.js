@@ -25,6 +25,14 @@ test('flow registry exposes openai and kiro with canonical source metadata', () 
     flowRegistry.getVisibleGroupIds('kiro', 'kiro-rs'),
     ['kiro-runtime-status', 'kiro-source-kiro-rs', 'service-email', 'service-proxy']
   );
+  assert.deepEqual(
+    flowRegistry.getSettingsGroupDefinition('openai-plus')?.rowIds || [],
+    ['row-plus-mode']
+  );
+  assert.deepEqual(
+    flowRegistry.getSettingsGroupDefinition('openai-phone')?.rowIds || [],
+    []
+  );
 });
 
 test('settings schema normalizes flat input into canonical flow and service namespaces', () => {
