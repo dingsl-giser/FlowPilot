@@ -136,3 +136,34 @@ test('runtime-state patch accepts nested flow and node updates without legacy st
   assert.equal(patch.runtimeState.flowState.openai.auth.oauthUrl, 'https://new.example.com/start');
   assert.equal(patch.runtimeState.flowState.openai.plus.plusCheckoutTabId, 99);
 });
+
+test('runtime-state patch prefers explicit activeFlowId over stale legacy flowId', () => {
+  const api = loadRuntimeStateApi();
+  const helpers = api.createRuntimeStateHelpers({
+    DEFAULT_ACTIVE_FLOW_ID: 'openai',
+    defaultNodeStatuses: {
+      'open-chatgpt': 'pending',
+      'kiro-start-device-login': 'pending',
+    },
+  });
+
+  const patch = helpers.buildSessionStatePatch({
+    flowId: 'openai',
+    activeFlowId: 'openai',
+    nodeStatuses: {
+      'open-chatgpt': 'completed',
+    },
+  }, {
+    activeFlowId: 'kiro',
+    nodeStatuses: {
+      'kiro-start-device-login': 'running',
+    },
+  });
+
+  assert.equal(patch.activeFlowId, 'kiro');
+  assert.equal(patch.flowId, 'kiro');
+  assert.deepStrictEqual(patch.nodeStatuses, {
+    'open-chatgpt': 'pending',
+    'kiro-start-device-login': 'running',
+  });
+});

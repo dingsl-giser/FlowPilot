@@ -35,7 +35,6 @@
     const defaultFlowId = String(deps.defaultFlowId || flowRegistry.DEFAULT_FLOW_ID || 'openai').trim().toLowerCase() || 'openai';
     const defaultOpenAiSourceId = flowRegistry.DEFAULT_OPENAI_SOURCE_ID || 'cpa';
     const defaultKiroSourceId = flowRegistry.DEFAULT_KIRO_SOURCE_ID || 'kiro-rs';
-    const defaultKiroRegion = flowRegistry.DEFAULT_KIRO_REGION || 'us-east-1';
     const defaultKiroRsUrl = flowRegistry.DEFAULT_KIRO_RS_URL || 'https://kiro.leftcode.xyz/admin';
     const normalizeFlowId = typeof flowRegistry.normalizeFlowId === 'function'
       ? flowRegistry.normalizeFlowId
@@ -123,7 +122,6 @@
               },
             },
             options: {
-              kiroRegion: defaultKiroRegion,
               kiroRsPriority: 0,
               kiroRsEndpoint: '',
               kiroRsAuthRegion: '',
@@ -286,11 +284,6 @@
               },
             },
             options: {
-              kiroRegion: String(
-                input?.kiroRegion
-                ?? nested?.flows?.kiro?.options?.kiroRegion
-                ?? defaults.flows.kiro.options.kiroRegion
-              ).trim() || defaults.flows.kiro.options.kiroRegion,
               kiroRsPriority: Number(
                 input?.kiroRsPriority
                 ?? nested?.flows?.kiro?.options?.kiroRsPriority
@@ -389,11 +382,11 @@
       next.ipProxyMode = normalizedState.services.proxy.mode;
       next.kiroRsUrl = kiroState.source.entries['kiro-rs'].kiroRsUrl;
       next.kiroRsKey = kiroState.source.entries['kiro-rs'].kiroRsKey;
-      next.kiroRegion = kiroState.options.kiroRegion;
       next.kiroRsPriority = kiroState.options.kiroRsPriority;
       next.kiroRsEndpoint = kiroState.options.kiroRsEndpoint;
       next.kiroRsAuthRegion = kiroState.options.kiroRsAuthRegion;
       next.kiroRsApiRegion = kiroState.options.kiroRsApiRegion;
+      delete next.kiroRegion;
       next.stepExecutionRangeByFlow = buildStepExecutionRangeByFlow(normalizedState);
       next.settingsSchemaVersion = normalizedState.schemaVersion;
       next.settingsState = cloneValue(normalizedState);
@@ -409,7 +402,6 @@
           sourceId: getSelectedSourceId(normalizedState, 'kiro'),
           kiroRsUrl: normalizedState.flows.kiro.source.entries['kiro-rs'].kiroRsUrl,
           kiroRsKey: normalizedState.flows.kiro.source.entries['kiro-rs'].kiroRsKey,
-          kiroRegion: normalizedState.flows.kiro.options.kiroRegion,
         };
       }
       return {

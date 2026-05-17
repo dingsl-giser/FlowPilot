@@ -191,6 +191,59 @@
       verifyHotmailAccount,
     } = deps;
 
+    function normalizeMessageFlowId(value = '', fallback = 'openai') {
+      const rootScope = typeof self !== 'undefined' ? self : globalThis;
+      if (typeof rootScope.MultiPageFlowRegistry?.normalizeFlowId === 'function') {
+        return rootScope.MultiPageFlowRegistry.normalizeFlowId(value, fallback);
+      }
+      const fallbackFlowId = String(fallback || 'openai').trim().toLowerCase() || 'openai';
+      const normalized = String(value || '').trim().toLowerCase();
+      if (!normalized || normalized === 'codex') {
+        return fallbackFlowId;
+      }
+      return normalized;
+    }
+
+    function normalizeMessageSourceId(flowId, sourceId = '', fallback = '') {
+      const rootScope = typeof self !== 'undefined' ? self : globalThis;
+      if (typeof rootScope.MultiPageFlowRegistry?.normalizeSourceId === 'function') {
+        return rootScope.MultiPageFlowRegistry.normalizeSourceId(flowId, sourceId, fallback);
+      }
+      const fallbackSourceId = String(
+        fallback || (normalizeMessageFlowId(flowId) === 'kiro' ? 'kiro-rs' : 'cpa')
+      ).trim().toLowerCase();
+      return String(sourceId || fallbackSourceId).trim().toLowerCase() || fallbackSourceId;
+    }
+
+    function mapAutoRunSourceIdToPanelMode(sourceId = '', fallback = 'cpa') {
+      const rootScope = typeof self !== 'undefined' ? self : globalThis;
+      if (typeof rootScope.MultiPageFlowRegistry?.mapSourceIdToPanelMode === 'function') {
+        return rootScope.MultiPageFlowRegistry.mapSourceIdToPanelMode('openai', sourceId, fallback);
+      }
+      return String(sourceId || fallback || 'cpa').trim().toLowerCase() || 'cpa';
+    }
+
+    function buildAutoRunFlowStateUpdates(payload = {}) {
+      const hasActiveFlowId = Object.prototype.hasOwnProperty.call(payload, 'activeFlowId');
+      const hasSourceId = Object.prototype.hasOwnProperty.call(payload, 'sourceId');
+      if (!hasActiveFlowId && !hasSourceId) {
+        return {};
+      }
+      const activeFlowId = normalizeMessageFlowId(payload.activeFlowId, 'openai');
+      const updates = {
+        activeFlowId,
+        flowId: activeFlowId,
+      };
+      if (hasSourceId) {
+        if (activeFlowId === 'kiro') {
+          updates.kiroSourceId = normalizeMessageSourceId('kiro', payload.sourceId, 'kiro-rs');
+        } else {
+          updates.panelMode = mapAutoRunSourceIdToPanelMode(payload.sourceId, 'cpa');
+        }
+      }
+      return updates;
+    }
+
     function preserveKeyFromState(updates, currentState, key) {
       if (!Object.prototype.hasOwnProperty.call(updates, key)) {
         return;
@@ -1208,8 +1261,16 @@
               });
             }
           }
+          const autoRunFlowStateUpdates = buildAutoRunFlowStateUpdates(message.payload || {});
+          if (Object.keys(autoRunFlowStateUpdates).length > 0 && typeof setState === 'function') {
+            await setState(autoRunFlowStateUpdates);
+          }
           const state = await getState();
-          const autoRunStartValidation = validateAutoRunStart(state, { state });
+          const autoRunStartValidation = validateAutoRunStart(state, {
+            activeFlowId: autoRunFlowStateUpdates.activeFlowId ?? state?.activeFlowId,
+            panelMode: autoRunFlowStateUpdates.panelMode ?? state?.panelMode,
+            state,
+          });
           if (autoRunStartValidation?.ok === false) {
             throw new Error(autoRunStartValidation.errors?.[0]?.message || '当前设置不支持启动自动流程。');
           }
@@ -1240,8 +1301,16 @@
               });
             }
           }
+          const autoRunFlowStateUpdates = buildAutoRunFlowStateUpdates(message.payload || {});
+          if (Object.keys(autoRunFlowStateUpdates).length > 0 && typeof setState === 'function') {
+            await setState(autoRunFlowStateUpdates);
+          }
           const state = await getState();
-          const autoRunStartValidation = validateAutoRunStart(state, { state });
+          const autoRunStartValidation = validateAutoRunStart(state, {
+            activeFlowId: autoRunFlowStateUpdates.activeFlowId ?? state?.activeFlowId,
+            panelMode: autoRunFlowStateUpdates.panelMode ?? state?.panelMode,
+            state,
+          });
           if (autoRunStartValidation?.ok === false) {
             throw new Error(autoRunStartValidation.errors?.[0]?.message || '当前设置不支持启动自动流程。');
           }
@@ -1374,6 +1443,10 @@
               oauthFlowDeadlineSourceUrl: null,
             } : {}),
           };
+          if (Object.prototype.hasOwnProperty.call(updates, 'activeFlowId')
+            && !Object.prototype.hasOwnProperty.call(stateUpdates, 'flowId')) {
+            stateUpdates.flowId = updates.activeFlowId;
+          }
           if (Object.prototype.hasOwnProperty.call(updates, 'icloudHostPreference')) {
             const nextHostPreference = String(updates.icloudHostPreference || '').trim().toLowerCase();
             stateUpdates.preferredIcloudHost = nextHostPreference === 'icloud.com' || nextHostPreference === 'icloud.com.cn'

@@ -71,7 +71,6 @@ const PERSISTED_SETTING_DEFAULTS = {
   kiroSourceId: 'kiro-rs',
   kiroRsUrl: 'https://kiro.leftcode.xyz/admin',
   kiroRsKey: '',
-  kiroRegion: 'us-east-1',
   stepExecutionRangeByFlow: {},
 };
 const PERSISTED_SETTING_KEYS = Object.keys(PERSISTED_SETTING_DEFAULTS);
@@ -153,14 +152,13 @@ test('buildPersistentSettingsPayload writes canonical settings schema into persi
     activeFlowId: 'kiro',
     kiroRsUrl: 'https://kiro.example.com/admin',
     kiroRsKey: 'secret-key',
-    kiroRegion: 'eu-west-1',
   }, { fillDefaults: true });
 
   assert.equal(payload.activeFlowId, 'kiro');
   assert.equal(payload.kiroSourceId, 'kiro-rs');
   assert.equal(payload.kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(payload.kiroRsKey, 'secret-key');
-  assert.equal(payload.kiroRegion, 'eu-west-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(payload, 'kiroRegion'), false);
   assert.equal(payload.settingsSchemaVersion, 3);
   assert.equal(payload.settingsState.activeFlowId, 'kiro');
   assert.equal(payload.settingsState.flows.kiro.source.selected, 'kiro-rs');
@@ -205,7 +203,6 @@ test('buildPersistentSettingsPayload accepts schema-only input when requireKnown
             },
           },
           options: {
-            kiroRegion: 'eu-west-1',
           },
           autoRun: {
             stepExecutionRange: { enabled: true, fromStep: 1, toStep: 3 },
@@ -219,7 +216,7 @@ test('buildPersistentSettingsPayload accepts schema-only input when requireKnown
   assert.equal(payload.kiroSourceId, 'kiro-rs');
   assert.equal(payload.kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(payload.kiroRsKey, 'schema-only-key');
-  assert.equal(payload.kiroRegion, 'eu-west-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(payload, 'kiroRegion'), false);
   assert.equal(payload.settingsSchemaVersion, 3);
 });
 
@@ -294,7 +291,6 @@ const chrome = {
                   },
                 },
                 options: {
-                  kiroRegion: 'ap-southeast-1',
                 },
                 autoRun: {
                   stepExecutionRange: { enabled: true, fromStep: 1, toStep: 3 },
@@ -317,7 +313,7 @@ const chrome = {
   assert.equal(state.ipProxyEnabled, true);
   assert.equal(state.kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(state.kiroRsKey, 'stored-key');
-  assert.equal(state.kiroRegion, 'ap-southeast-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(state, 'kiroRegion'), false);
   assert.deepEqual(state.stepExecutionRangeByFlow.kiro, {
     enabled: true,
     fromStep: 1,
@@ -381,7 +377,6 @@ function getPersistedWrites() {
             },
           },
           options: {
-            kiroRegion: 'us-west-2',
           },
           autoRun: {
             stepExecutionRange: { enabled: true, fromStep: 1, toStep: 3 },
@@ -396,12 +391,12 @@ function getPersistedWrites() {
   assert.equal(persisted.activeFlowId, 'kiro');
   assert.equal(persisted.kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(persisted.kiroRsKey, 'nested-only-key');
-  assert.equal(persisted.kiroRegion, 'us-west-2');
+  assert.equal(Object.prototype.hasOwnProperty.call(persisted, 'kiroRegion'), false);
   assert.equal(persisted.settingsSchemaVersion, 3);
   assert.equal(write.activeFlowId, 'kiro');
   assert.equal(write.kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(write.kiroRsKey, 'nested-only-key');
-  assert.equal(write.kiroRegion, 'us-west-2');
+  assert.equal(Object.prototype.hasOwnProperty.call(write, 'kiroRegion'), false);
   assert.equal(write.settingsSchemaVersion, 3);
   assert.equal(write.settingsState.activeFlowId, 'kiro');
 });

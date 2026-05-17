@@ -60,9 +60,16 @@ function createApi({
     extractFunction('startAutoRunFromCurrentSettings'),
   ].join('\n');
 
-  return new Function(`
+return new Function(`
 const events = [];
-const latestState = { contributionMode: false };
+const DEFAULT_ACTIVE_FLOW_ID = 'openai';
+const latestState = {
+  contributionMode: false,
+  activeFlowId: 'openai',
+  flowId: 'openai',
+  panelMode: 'cpa',
+  kiroSourceId: 'kiro-rs',
+};
 const inputAutoSkipFailures = { checked: false };
 const inputContributionNickname = { value: 'tester' };
 const inputContributionQq = { value: '123456' };
@@ -71,6 +78,8 @@ const inputAutoDelayEnabled = { checked: false };
 const inputAutoDelayMinutes = { value: '30' };
 const btnAutoRun = { disabled: false, innerHTML: '' };
 const inputRunCount = { disabled: false };
+const selectFlow = { value: latestState.activeFlowId };
+const selectPanelMode = { value: latestState.panelMode };
 let runCountValue = ${Math.max(1, Number(runCount) || 1)};
 let pendingAutoRunStartTotalRuns = 0;
 let pendingAutoRunStartExpiresAt = 0;
@@ -103,6 +112,19 @@ async function persistCurrentSettingsForAction() {
 }
 function getRunCountValue() { return Math.max(1, Number(runCountValue) || 1); }
 function normalizeAutoRunThreadIntervalMinutes(value) { return Number(value) || 0; }
+function normalizePanelMode(value = '', fallback = 'cpa') {
+  return String(value || fallback || 'cpa').trim().toLowerCase() || 'cpa';
+}
+function getSelectedFlowId(state = latestState) {
+  return String(selectFlow.value || state.activeFlowId || state.flowId || DEFAULT_ACTIVE_FLOW_ID).trim().toLowerCase() || DEFAULT_ACTIVE_FLOW_ID;
+}
+function getSelectedSourceId(flowId = getSelectedFlowId()) {
+  return String(
+    flowId === 'kiro'
+      ? (selectPanelMode.value || latestState.kiroSourceId || 'kiro-rs')
+      : normalizePanelMode(selectPanelMode.value || latestState.panelMode || 'cpa')
+  ).trim().toLowerCase() || (flowId === 'kiro' ? 'kiro-rs' : 'cpa');
+}
 function shouldOfferAutoModeChoice() { return false; }
 async function openAutoStartChoiceDialog() { throw new Error('should not be called'); }
 function getFirstUnfinishedStep() { return 1; }
@@ -194,6 +216,26 @@ test('startAutoRunFromCurrentSettings freezes run count before async settings sy
     ['refresh', 'sync-settings', 'stale-status-reset', 'send']
   );
   assert.equal(events[3].message.payload.totalRuns, 20);
+});
+
+test('startAutoRunFromCurrentSettings sends current flow selection with auto run payload', async () => {
+  const api = createApi({
+    persistImpl: `(events) => {
+      selectFlow.value = 'kiro';
+      selectPanelMode.value = 'kiro-rs';
+      latestState.activeFlowId = 'openai';
+      latestState.flowId = 'openai';
+      latestState.kiroSourceId = 'kiro-rs';
+      events.push({ type: 'flow-switch-race' });
+    }`,
+  });
+
+  const result = await api.startAutoRunFromCurrentSettings();
+  const sendEvent = api.getEvents().find((entry) => entry.type === 'send');
+
+  assert.equal(result, true);
+  assert.equal(sendEvent.message.payload.activeFlowId, 'kiro');
+  assert.equal(sendEvent.message.payload.sourceId, 'kiro-rs');
 });
 
 test('startAutoRunFromCurrentSettings blocks when shared flow capability validation fails', async () => {

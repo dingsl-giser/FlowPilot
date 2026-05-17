@@ -892,7 +892,6 @@ const PERSISTED_SETTING_DEFAULTS = {
   kiroSourceId: 'kiro-rs',
   kiroRsUrl: self.MultiPageFlowRegistry?.DEFAULT_KIRO_RS_URL || 'https://kiro.leftcode.xyz/admin',
   kiroRsKey: '',
-  kiroRegion: self.MultiPageFlowRegistry?.DEFAULT_KIRO_REGION || 'us-east-1',
   vpsUrl: '',
   vpsPassword: '',
   localCpaStep9Mode: DEFAULT_LOCAL_CPA_STEP9_MODE,
@@ -2815,12 +2814,6 @@ function normalizePersistentSettingValue(key, value) {
       ).trim() || 'https://kiro.leftcode.xyz/admin';
     case 'kiroRsKey':
       return String(value || '');
-    case 'kiroRegion':
-      return String(
-        value
-        || self.MultiPageFlowRegistry?.DEFAULT_KIRO_REGION
-        || 'us-east-1'
-      ).trim() || 'us-east-1';
     case 'vpsUrl':
       return String(value || '').trim();
     case 'vpsPassword':
@@ -3406,6 +3399,166 @@ async function getPersistedSettings() {
     ...LEGACY_VERIFICATION_RESEND_COUNT_KEYS,
   ]);
   return buildPersistentSettingsPayload(stored, { fillDefaults: true });
+}
+
+function cloneAutoRunKeepStateValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => cloneAutoRunKeepStateValue(entry));
+  }
+  if (isPlainObjectValue(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, cloneAutoRunKeepStateValue(entryValue)])
+    );
+  }
+  return value;
+}
+
+function mergeAutoRunKeepStateValue(baseValue, patchValue) {
+  if (Array.isArray(patchValue)) {
+    return patchValue.map((entry) => cloneAutoRunKeepStateValue(entry));
+  }
+  if (!isPlainObjectValue(patchValue)) {
+    return patchValue === undefined ? cloneAutoRunKeepStateValue(baseValue) : patchValue;
+  }
+
+  const baseObject = isPlainObjectValue(baseValue) ? baseValue : {};
+  const nextObject = {
+    ...cloneAutoRunKeepStateValue(baseObject),
+  };
+  for (const [key, entryValue] of Object.entries(patchValue)) {
+    nextObject[key] = mergeAutoRunKeepStateValue(baseObject[key], entryValue);
+  }
+  return nextObject;
+}
+
+function collectAutoRunFreshResetRuntimeSettingKeys() {
+  const keySet = new Set();
+  const flowFieldGroups = isPlainObjectValue(runtimeStateHelpers?.FLOW_FIELD_GROUPS)
+    ? runtimeStateHelpers.FLOW_FIELD_GROUPS
+    : {};
+
+  for (const groups of Object.values(flowFieldGroups)) {
+    if (!isPlainObjectValue(groups)) {
+      continue;
+    }
+    for (const fields of Object.values(groups)) {
+      if (!Array.isArray(fields)) {
+        continue;
+      }
+      for (const field of fields) {
+        const normalizedField = String(field || '').trim();
+        if (normalizedField) {
+          keySet.add(normalizedField);
+        }
+      }
+    }
+  }
+
+  const sharedRuntimeFieldGroups = [
+    runtimeStateHelpers?.RUNTIME_SHARED_FIELDS,
+    runtimeStateHelpers?.RUNTIME_PROXY_FIELDS,
+  ];
+  for (const fields of sharedRuntimeFieldGroups) {
+    if (!Array.isArray(fields)) {
+      continue;
+    }
+    for (const field of fields) {
+      const normalizedField = String(field || '').trim();
+      if (normalizedField) {
+        keySet.add(normalizedField);
+      }
+    }
+  }
+
+  return keySet;
+}
+
+function buildAutoRunFreshResetSettingsState(prevState = {}, activeFlowId = DEFAULT_ACTIVE_FLOW_ID) {
+  const currentSettingsState = isPlainObjectValue(prevState?.settingsState)
+    ? prevState.settingsState
+    : {};
+  const normalizedStepExecutionRangeByFlow = normalizeStepExecutionRangeByFlow(prevState?.stepExecutionRangeByFlow || {});
+  const nextSettingsStatePatch = {
+    activeFlowId,
+    services: {
+      email: {
+        provider: prevState?.mailProvider,
+      },
+      proxy: {
+        enabled: prevState?.ipProxyEnabled,
+        provider: prevState?.ipProxyService,
+        mode: prevState?.ipProxyMode,
+      },
+    },
+    flows: {
+      openai: {
+        source: {
+          selected: prevState?.panelMode,
+        },
+        autoRun: normalizedStepExecutionRangeByFlow.openai
+          ? {
+            stepExecutionRange: normalizedStepExecutionRangeByFlow.openai,
+          }
+          : undefined,
+      },
+      kiro: {
+        source: {
+          selected: prevState?.kiroSourceId,
+        },
+        autoRun: normalizedStepExecutionRangeByFlow.kiro
+          ? {
+            stepExecutionRange: normalizedStepExecutionRangeByFlow.kiro,
+          }
+          : undefined,
+      },
+    },
+  };
+
+  return mergeAutoRunKeepStateValue(currentSettingsState, nextSettingsStatePatch);
+}
+
+function buildFreshAutoRunKeepState(prevState = {}) {
+  const sourceState = isPlainObjectValue(prevState) ? prevState : {};
+  const activeFlowId = self.MultiPageFlowRegistry?.normalizeFlowId
+    ? self.MultiPageFlowRegistry.normalizeFlowId(
+      sourceState.activeFlowId || sourceState.flowId,
+      DEFAULT_ACTIVE_FLOW_ID
+    )
+    : (String(sourceState.activeFlowId || sourceState.flowId || DEFAULT_ACTIVE_FLOW_ID).trim().toLowerCase()
+      || DEFAULT_ACTIVE_FLOW_ID);
+  const settingsState = buildAutoRunFreshResetSettingsState(sourceState, activeFlowId);
+  const persistedSnapshot = buildPersistentSettingsPayload({
+    ...sourceState,
+    activeFlowId,
+    settingsState,
+  }, {
+    fillDefaults: false,
+  });
+  const runtimeOnlyKeys = collectAutoRunFreshResetRuntimeSettingKeys();
+  const keepState = {};
+
+  for (const [key, value] of Object.entries(persistedSnapshot)) {
+    if (runtimeOnlyKeys.has(key)) {
+      continue;
+    }
+    keepState[key] = value;
+  }
+
+  keepState.activeFlowId = activeFlowId;
+  keepState.flowId = activeFlowId;
+  if (Object.prototype.hasOwnProperty.call(sourceState, 'panelMode')) {
+    keepState.panelMode = normalizePanelMode(sourceState.panelMode);
+  }
+  if (Object.prototype.hasOwnProperty.call(sourceState, 'kiroSourceId')) {
+    keepState.kiroSourceId = self.MultiPageFlowRegistry?.normalizeSourceId
+      ? self.MultiPageFlowRegistry.normalizeSourceId('kiro', sourceState.kiroSourceId, 'kiro-rs')
+      : String(sourceState.kiroSourceId || 'kiro-rs').trim().toLowerCase();
+  }
+  if (Object.prototype.hasOwnProperty.call(sourceState, 'settingsSchemaVersion')) {
+    keepState.settingsSchemaVersion = Number(sourceState.settingsSchemaVersion) || 0;
+  }
+  keepState.settingsState = settingsState;
+  return keepState;
 }
 
 async function getPersistedAliasState() {
@@ -11674,6 +11827,7 @@ const autoRunController = self.MultiPageBackgroundAutoRunController?.createAutoR
   AUTO_RUN_TIMER_KIND_BETWEEN_ROUNDS,
   broadcastAutoRunStatus,
   broadcastStopToContentScripts,
+  buildFreshAutoRunKeepState,
   cancelPendingCommands,
   clearStopRequest: () => clearStopRequest(),
   createAutoRunSessionId: () => createAutoRunSessionId(),

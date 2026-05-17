@@ -76,7 +76,6 @@ test('kiro start device login registers client, opens auth tab, and completes wi
       throw new Error(`Unexpected fetch URL: ${url}`);
     },
     getState: async () => ({
-      kiroRegion: 'eu-west-1',
     }),
     registerTab: async (source, tabId) => {
       registerCalls.push({ source, tabId });
@@ -94,12 +93,11 @@ test('kiro start device login registers client, opens auth tab, and completes wi
 
   await executor.executeKiroStartDeviceLogin({
     nodeId: 'kiro-start-device-login',
-    kiroRegion: 'eu-west-1',
   });
 
   assert.equal(fetchCalls.length, 2);
-  assert.equal(fetchCalls[0].url, 'https://oidc.eu-west-1.amazonaws.com/client/register');
-  assert.equal(fetchCalls[1].url, 'https://oidc.eu-west-1.amazonaws.com/device_authorization');
+  assert.equal(fetchCalls[0].url, 'https://oidc.us-east-1.amazonaws.com/client/register');
+  assert.equal(fetchCalls[1].url, 'https://oidc.us-east-1.amazonaws.com/device_authorization');
   assert.deepEqual(fetchCalls[1].body, {
     clientId: 'client-001',
     clientSecret: 'secret-001',
@@ -120,7 +118,7 @@ test('kiro start device login registers client, opens auth tab, and completes wi
   assert.equal(finalState.kiroDeviceAuthorizationCode, 'device-code-001');
   assert.equal(finalState.kiroDeviceCode, 'ABCD-1234');
   assert.equal(finalState.kiroLoginUrl, 'https://device.example.com/complete');
-  assert.equal(finalState.kiroAuthRegion, 'eu-west-1');
+  assert.equal(finalState.kiroAuthRegion, 'us-east-1');
   assert.equal(finalState.kiroAuthIntervalSeconds, 7);
   assert.equal(finalState.kiroAuthStatus, 'waiting_user');
   assert.equal(finalState.kiroUploadStatus, 'waiting_login');

@@ -5,7 +5,6 @@
   const LEGACY_OPENAI_FLOW_ALIAS = 'codex';
   const DEFAULT_OPENAI_SOURCE_ID = 'cpa';
   const DEFAULT_KIRO_SOURCE_ID = 'kiro-rs';
-  const DEFAULT_KIRO_REGION = 'us-east-1';
   const DEFAULT_KIRO_RS_URL = 'https://kiro.leftcode.xyz/admin';
   const OPENAI_SOURCE_IDS = Object.freeze(['cpa', 'sub2api', 'codex2api']);
   const SHARED_SERVICE_IDS = Object.freeze(['email', 'proxy']);
@@ -310,7 +309,7 @@
     'kiro-source-kiro-rs': {
       id: 'kiro-source-kiro-rs',
       label: 'kiro.rs 配置',
-      rowIds: ['row-kiro-rs-url', 'row-kiro-rs-key', 'row-kiro-region'],
+      rowIds: ['row-kiro-rs-url', 'row-kiro-rs-key'],
     },
     'kiro-runtime-status': {
       id: 'kiro-runtime-status',
@@ -461,7 +460,6 @@
   return {
     DEFAULT_FLOW_CAPABILITIES,
     DEFAULT_FLOW_ID,
-    DEFAULT_KIRO_REGION,
     DEFAULT_KIRO_RS_URL,
     DEFAULT_KIRO_SOURCE_ID,
     DEFAULT_OPENAI_SOURCE_ID,

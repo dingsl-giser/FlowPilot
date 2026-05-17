@@ -321,13 +321,13 @@
         ...cloneValue(normalizePlainObject(state.runtimeState)),
       };
       const activeFlowId = normalizeFlowId(
-        Object.prototype.hasOwnProperty.call(state, 'flowId')
-          ? state.flowId
-          : Object.prototype.hasOwnProperty.call(state, 'activeFlowId')
+        Object.prototype.hasOwnProperty.call(state, 'activeFlowId')
           ? state.activeFlowId
-          : Object.prototype.hasOwnProperty.call(baseRuntimeState, 'flowId')
-            ? baseRuntimeState.flowId
-          : baseRuntimeState.activeFlowId
+          : Object.prototype.hasOwnProperty.call(state, 'flowId')
+          ? state.flowId
+          : Object.prototype.hasOwnProperty.call(baseRuntimeState, 'activeFlowId')
+            ? baseRuntimeState.activeFlowId
+          : baseRuntimeState.flowId
       );
       const currentNodeId = String(
         Object.prototype.hasOwnProperty.call(state, 'currentNodeId')

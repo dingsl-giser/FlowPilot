@@ -134,7 +134,6 @@ const FIVE_SIM_SUPPORTED_COUNTRY_ID_SET = new Set(['indonesia', 'thailand', 'vie
 const HERO_SMS_SUPPORTED_COUNTRY_ID_SET = new Set(['6', '52', '10']);
 const self = {
   MultiPageFlowRegistry: {
-    DEFAULT_KIRO_REGION: 'us-east-1',
     DEFAULT_KIRO_RS_URL: 'https://kiro.leftcode.xyz/admin',
     normalizeFlowId(value, fallback = 'openai') {
       const normalized = String(value || '').trim().toLowerCase();
@@ -279,7 +278,6 @@ return {
   assert.equal(api.normalizePersistentSettingValue('activeFlowId', 'kiro'), 'kiro');
   assert.equal(api.normalizePersistentSettingValue('kiroSourceId', 'unknown'), 'kiro-rs');
   assert.equal(api.normalizePersistentSettingValue('kiroRsUrl', ''), 'https://kiro.leftcode.xyz/admin');
-  assert.equal(api.normalizePersistentSettingValue('kiroRegion', ''), 'us-east-1');
   assert.equal(api.normalizePersistentSettingValue('kiroRsKey', ' key-1 '), ' key-1 ');
   assert.equal(api.normalizePersistentSettingValue('phoneSmsProvider', '5SIM'), '5sim');
   assert.equal(api.normalizePersistentSettingValue('phoneSmsProvider', 'NEXSMS'), 'nexsms');

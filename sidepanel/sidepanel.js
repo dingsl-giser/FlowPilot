@@ -175,8 +175,6 @@ const rowKiroRsUrl = document.getElementById('row-kiro-rs-url');
 const inputKiroRsUrl = document.getElementById('input-kiro-rs-url');
 const rowKiroRsKey = document.getElementById('row-kiro-rs-key');
 const inputKiroRsKey = document.getElementById('input-kiro-rs-key');
-const rowKiroRegion = document.getElementById('row-kiro-region');
-const inputKiroRegion = document.getElementById('input-kiro-region');
 const rowKiroDeviceCode = document.getElementById('row-kiro-device-code');
 const displayKiroDeviceCode = document.getElementById('display-kiro-device-code');
 const rowKiroLoginUrl = document.getElementById('row-kiro-login-url');
@@ -2589,15 +2587,32 @@ function shouldOfferAutoModeChoice(state = latestState) {
 }
 
 function syncLatestState(nextState) {
-  const mergedNodeStatuses = nextState?.nodeStatuses
+  const normalizedNextState = {
+    ...(nextState || {}),
+  };
+  if (
+    Object.prototype.hasOwnProperty.call(normalizedNextState, 'activeFlowId')
+    || Object.prototype.hasOwnProperty.call(normalizedNextState, 'flowId')
+  ) {
+    const fallbackFlowId = latestState?.activeFlowId || latestState?.flowId || DEFAULT_ACTIVE_FLOW_ID;
+    const rawFlowId = Object.prototype.hasOwnProperty.call(normalizedNextState, 'activeFlowId')
+      ? normalizedNextState.activeFlowId
+      : normalizedNextState.flowId;
+    const normalizedFlowId = typeof normalizeFlowId === 'function'
+      ? normalizeFlowId(rawFlowId, fallbackFlowId)
+      : (String(rawFlowId || fallbackFlowId || DEFAULT_ACTIVE_FLOW_ID).trim().toLowerCase() || DEFAULT_ACTIVE_FLOW_ID);
+    normalizedNextState.activeFlowId = normalizedFlowId;
+    normalizedNextState.flowId = normalizedFlowId;
+  }
+  const mergedNodeStatuses = normalizedNextState?.nodeStatuses
     ? getStoredNodeStatuses({
-      nodeStatuses: { ...NODE_DEFAULT_STATUSES, ...(latestState?.nodeStatuses || {}), ...nextState.nodeStatuses },
+      nodeStatuses: { ...NODE_DEFAULT_STATUSES, ...(latestState?.nodeStatuses || {}), ...normalizedNextState.nodeStatuses },
     })
     : getStoredNodeStatuses(latestState);
 
   latestState = {
     ...(latestState || {}),
-    ...(nextState || {}),
+    ...normalizedNextState,
     nodeStatuses: mergedNodeStatuses,
   };
 
@@ -4153,9 +4168,6 @@ function collectSettingsPayload() {
   const defaultKiroRsUrl = String(
     flowRegistryApi?.DEFAULT_KIRO_RS_URL || 'https://kiro.leftcode.xyz/admin'
   ).trim() || 'https://kiro.leftcode.xyz/admin';
-  const defaultKiroRegion = String(
-    flowRegistryApi?.DEFAULT_KIRO_REGION || 'us-east-1'
-  ).trim() || 'us-east-1';
   const normalizeKiroSourceIdSafe = typeof normalizeSourceIdForFlow === 'function'
     ? normalizeSourceIdForFlow
     : ((_flowId, sourceId = '', fallback = 'kiro-rs') => {
@@ -4184,11 +4196,6 @@ function collectSettingsPayload() {
       || latestState?.kiroRsKey
       || ''
     ),
-    kiroRegion: String(
-      (typeof inputKiroRegion !== 'undefined' && inputKiroRegion ? inputKiroRegion.value : '')
-      || latestState?.kiroRegion
-      || defaultKiroRegion
-    ).trim() || defaultKiroRegion,
     vpsUrl: inputVpsUrl.value.trim(),
     vpsPassword: inputVpsPassword.value,
     localCpaStep9Mode: getSelectedLocalCpaStep9Mode(),
@@ -9753,7 +9760,7 @@ function applySettingsState(state) {
         signupMethod: normalizeSignupMethod(state?.signupMethod || DEFAULT_SIGNUP_METHOD),
       };
     syncStepDefinitionsForMode(stepDefinitionState.plusModeEnabled, {
-      activeFlowId: state?.flowId || state?.activeFlowId,
+      activeFlowId: state?.activeFlowId || state?.flowId,
       plusPaymentMethod: state?.plusPaymentMethod,
       signupMethod: stepDefinitionState.signupMethod,
       phoneSignupReloginAfterBindEmailEnabled: Boolean(state?.phoneSignupReloginAfterBindEmailEnabled),
@@ -9924,13 +9931,6 @@ function applySettingsState(state) {
   }
   if (typeof inputKiroRsKey !== 'undefined' && inputKiroRsKey) {
     inputKiroRsKey.value = String(state?.kiroRsKey || '');
-  }
-  if (typeof inputKiroRegion !== 'undefined' && inputKiroRegion) {
-    inputKiroRegion.value = String(
-      state?.kiroRegion
-      || getFlowRegistry()?.DEFAULT_KIRO_REGION
-      || 'us-east-1'
-    ).trim();
   }
   if (typeof displayKiroDeviceCode !== 'undefined' && displayKiroDeviceCode) {
     const kiroDeviceCode = String(
@@ -13456,6 +13456,16 @@ async function startAutoRunFromCurrentSettings() {
   inputRunCount.disabled = true;
   const delayEnabled = inputAutoDelayEnabled.checked;
   const delayMinutes = normalizeAutoDelayMinutes(inputAutoDelayMinutes.value);
+  const activeFlowId = typeof getSelectedFlowId === 'function'
+    ? getSelectedFlowId(latestState)
+    : (String(latestState?.activeFlowId || latestState?.flowId || DEFAULT_ACTIVE_FLOW_ID).trim().toLowerCase() || DEFAULT_ACTIVE_FLOW_ID);
+  const sourceId = typeof getSelectedSourceId === 'function'
+    ? getSelectedSourceId(activeFlowId)
+    : (
+      activeFlowId === DEFAULT_ACTIVE_FLOW_ID
+        ? normalizePanelMode(latestState?.panelMode || 'cpa')
+        : (String(latestState?.kiroSourceId || 'kiro-rs').trim().toLowerCase() || 'kiro-rs')
+    );
   inputAutoDelayMinutes.value = String(delayMinutes);
   btnAutoRun.innerHTML = delayEnabled
     ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> 计划中...'
@@ -13466,6 +13476,8 @@ async function startAutoRunFromCurrentSettings() {
     payload: {
       totalRuns,
       delayMinutes,
+      activeFlowId,
+      sourceId,
       autoRunSkipFailures,
       contributionMode: Boolean(latestState?.contributionMode),
       contributionNickname,
@@ -14053,7 +14065,7 @@ selectPanelMode.addEventListener('change', async () => {
   saveSettings({ silent: true }).catch(() => { });
 });
 
-[inputKiroRsUrl, inputKiroRsKey, inputKiroRegion].forEach((input) => {
+[inputKiroRsUrl, inputKiroRsKey].forEach((input) => {
   input?.addEventListener('input', () => {
     markSettingsDirty(true);
     scheduleSettingsAutoSave();

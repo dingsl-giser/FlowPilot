@@ -326,7 +326,7 @@
       try {
         const latestState = await getExecutionState(state);
         const auth = await startBuilderIdDeviceLogin(
-          latestState.kiroRegion || DEFAULT_REGION,
+          DEFAULT_REGION,
           fetchImpl
         );
         const loginUrl = cleanString(auth.verificationUriComplete || auth.verificationUri);
@@ -379,7 +379,7 @@
         const clientId = cleanString(latestState.kiroClientId);
         const clientSecret = String(latestState.kiroClientSecret || '');
         const deviceCode = String(latestState.kiroDeviceAuthorizationCode || '');
-        const region = normalizeRegion(latestState.kiroAuthRegion || latestState.kiroRegion || DEFAULT_REGION);
+        const region = normalizeRegion(latestState.kiroAuthRegion, DEFAULT_REGION);
         const expiresAt = Math.max(0, Number(latestState.kiroAuthExpiresAt) || 0);
         if (!clientId || !clientSecret || !deviceCode) {
           throw new Error('Kiro device login has not been started yet.');
@@ -443,7 +443,7 @@
         const refreshToken = String(latestState.kiroRefreshToken || '');
         const clientId = cleanString(latestState.kiroClientId);
         const clientSecret = String(latestState.kiroClientSecret || '');
-        const region = normalizeRegion(latestState.kiroAuthRegion || latestState.kiroRegion || DEFAULT_REGION);
+        const region = normalizeRegion(latestState.kiroAuthRegion, DEFAULT_REGION);
         const kiroRsUrl = String(latestState.kiroRsUrl || '');
         const kiroRsKey = String(latestState.kiroRsKey || '');
         if (!refreshToken || !clientId || !clientSecret) {

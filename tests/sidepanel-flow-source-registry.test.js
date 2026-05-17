@@ -39,7 +39,6 @@ test('sidepanel html exposes flow selector and kiro source fields', () => {
     'id="label-source-selector"',
     'id="row-kiro-rs-url"',
     'id="row-kiro-rs-key"',
-    'id="row-kiro-region"',
     'id="row-kiro-device-code"',
     'id="row-kiro-login-url"',
     'id="row-kiro-upload-status"',
@@ -112,6 +111,52 @@ return {
     },
   });
   assert.deepEqual(api.calls[1], { type: 'render', stepIds: [88] });
+});
+
+test('syncLatestState keeps activeFlowId and flowId in sync when only one side changes', () => {
+  const bundle = [
+    extractFunction(sidepanelSource, 'syncLatestState'),
+  ].join('\n');
+
+  const api = new Function(`
+let latestState = {
+  activeFlowId: 'openai',
+  flowId: 'openai',
+  nodeStatuses: { 'open-chatgpt': 'completed' },
+};
+const DEFAULT_ACTIVE_FLOW_ID = 'openai';
+const NODE_DEFAULT_STATUSES = { 'open-chatgpt': 'pending' };
+const calls = [];
+function normalizeFlowId(value = '', fallback = DEFAULT_ACTIVE_FLOW_ID) {
+  return String(value || fallback || DEFAULT_ACTIVE_FLOW_ID).trim().toLowerCase() || DEFAULT_ACTIVE_FLOW_ID;
+}
+function getStoredNodeStatuses(state = {}) {
+  return { ...NODE_DEFAULT_STATUSES, ...(state?.nodeStatuses || {}) };
+}
+function renderAccountRecords(state) {
+  calls.push({ ...state });
+}
+${bundle}
+return {
+  syncLatestState,
+  getLatestState() {
+    return latestState;
+  },
+  getCalls() {
+    return calls;
+  },
+};
+`)();
+
+  api.syncLatestState({ flowId: 'kiro' });
+
+  assert.deepStrictEqual(api.getLatestState(), {
+    activeFlowId: 'kiro',
+    flowId: 'kiro',
+    nodeStatuses: { 'open-chatgpt': 'completed' },
+  });
+  assert.equal(api.getCalls()[0].activeFlowId, 'kiro');
+  assert.equal(api.getCalls()[0].flowId, 'kiro');
 });
 
 test('updatePanelModeUI reapplies dynamic Plus and phone visibility after flow group visibility', () => {

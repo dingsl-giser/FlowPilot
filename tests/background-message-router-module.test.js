@@ -296,6 +296,125 @@ test('SAVE_SETTING broadcasts operation delay setting without background success
   assert.equal(logs.length, 0);
 });
 
+test('SAVE_SETTING mirrors activeFlowId into flowId when switching to kiro flow', async () => {
+  const source = fs.readFileSync('background/message-router.js', 'utf8');
+  const globalScope = { console };
+  const api = new Function('self', `${source}; return self.MultiPageBackgroundMessageRouter;`)(globalScope);
+  const broadcasts = [];
+  let state = { activeFlowId: 'openai', flowId: 'openai', panelMode: 'cpa', plusModeEnabled: false, plusPaymentMethod: 'paypal' };
+
+  const router = api.createMessageRouter({
+    addLog: async () => {},
+    buildLuckmailSessionSettingsPayload: () => ({}),
+    buildPersistentSettingsPayload: (input = {}) => Object.prototype.hasOwnProperty.call(input, 'activeFlowId')
+      ? { activeFlowId: input.activeFlowId }
+      : {},
+    broadcastDataUpdate: (payload) => broadcasts.push(payload),
+    getState: async () => ({ ...state }),
+    setPersistentSettings: async () => {},
+    setState: async (updates) => { state = { ...state, ...updates }; },
+  });
+
+  const response = await router.handleMessage({
+    type: 'SAVE_SETTING',
+    source: 'sidepanel',
+    payload: { activeFlowId: 'kiro' },
+  });
+
+  assert.equal(response.ok, true);
+  assert.equal(state.activeFlowId, 'kiro');
+  assert.equal(state.flowId, 'kiro');
+  assert.deepStrictEqual(broadcasts.at(-1), {
+    activeFlowId: 'kiro',
+    flowId: 'kiro',
+    signupMethod: 'email',
+  });
+});
+
+test('AUTO_RUN applies current flow selection from payload before starting loop', async () => {
+  const source = fs.readFileSync('background/message-router.js', 'utf8');
+  const globalScope = { console };
+  const api = new Function('self', `${source}; return self.MultiPageBackgroundMessageRouter;`)(globalScope);
+  const calls = [];
+  const validations = [];
+  let state = {
+    activeFlowId: 'openai',
+    flowId: 'openai',
+    panelMode: 'cpa',
+    plusModeEnabled: false,
+    plusPaymentMethod: 'paypal',
+  };
+
+  const router = api.createMessageRouter({
+    clearStopRequest: () => {},
+    getPendingAutoRunTimerPlan: () => null,
+    getState: async () => ({ ...state }),
+    normalizeRunCount: (value) => Number(value) || 1,
+    setState: async (updates) => {
+      calls.push({ type: 'setState', updates: { ...updates } });
+      state = { ...state, ...updates };
+    },
+    startAutoRunLoop: (totalRuns, options) => {
+      calls.push({ type: 'startAutoRunLoop', totalRuns, options });
+    },
+    validateAutoRunStart: (validationState, options = {}) => {
+      validations.push({
+        activeFlowId: validationState?.activeFlowId,
+        flowId: validationState?.flowId,
+        kiroSourceId: validationState?.kiroSourceId,
+        optionActiveFlowId: options?.activeFlowId,
+      });
+      return { ok: true, errors: [] };
+    },
+  });
+
+  const response = await router.handleMessage({
+    type: 'AUTO_RUN',
+    payload: {
+      totalRuns: 1,
+      activeFlowId: 'kiro',
+      sourceId: 'kiro-rs',
+    },
+  });
+
+  assert.equal(response.ok, true);
+  assert.equal(state.activeFlowId, 'kiro');
+  assert.equal(state.flowId, 'kiro');
+  assert.equal(state.kiroSourceId, 'kiro-rs');
+  assert.deepStrictEqual(calls, [
+    {
+      type: 'setState',
+      updates: {
+        activeFlowId: 'kiro',
+        flowId: 'kiro',
+        kiroSourceId: 'kiro-rs',
+      },
+    },
+    {
+      type: 'setState',
+      updates: {
+        autoRunSkipFailures: false,
+      },
+    },
+    {
+      type: 'startAutoRunLoop',
+      totalRuns: 1,
+      options: {
+        autoRunSkipFailures: false,
+        mode: 'restart',
+      },
+    },
+  ]);
+  assert.deepStrictEqual(validations, [
+    {
+      activeFlowId: 'kiro',
+      flowId: 'kiro',
+      kiroSourceId: 'kiro-rs',
+      optionActiveFlowId: 'kiro',
+    },
+  ]);
+});
+
 test('SAVE_SETTING re-resolves signup method when panel mode changes', async () => {
   const source = fs.readFileSync('background/message-router.js', 'utf8');
   const globalScope = { console };

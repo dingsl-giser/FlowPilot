@@ -47,7 +47,6 @@ test('settings schema normalizes flat input into canonical flow and service name
     ipProxyService: '711proxy',
     kiroRsUrl: 'https://kiro.example.com/admin',
     kiroRsKey: 'secret-key',
-    kiroRegion: 'eu-west-1',
     stepExecutionRangeByFlow: {
       openai: { enabled: true, fromStep: 2, toStep: 9 },
       kiro: { enabled: true, fromStep: 1, toStep: 3 },
@@ -61,7 +60,6 @@ test('settings schema normalizes flat input into canonical flow and service name
   assert.equal(normalized.flows.kiro.source.selected, 'kiro-rs');
   assert.equal(normalized.flows.kiro.source.entries['kiro-rs'].kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(normalized.flows.kiro.source.entries['kiro-rs'].kiroRsKey, 'secret-key');
-  assert.equal(normalized.flows.kiro.options.kiroRegion, 'eu-west-1');
   assert.deepEqual(normalized.flows.kiro.autoRun.stepExecutionRange, {
     enabled: true,
     fromStep: 1,
@@ -77,7 +75,6 @@ test('settings schema can project canonical state back to legacy payload without
     kiroSourceId: 'kiro-rs',
     kiroRsUrl: 'https://kiro.example.com/admin',
     kiroRsKey: 'key-123',
-    kiroRegion: 'ap-southeast-1',
   }));
 
   assert.equal(payload.activeFlowId, 'kiro');
@@ -85,7 +82,7 @@ test('settings schema can project canonical state back to legacy payload without
   assert.equal(payload.kiroSourceId, 'kiro-rs');
   assert.equal(payload.kiroRsUrl, 'https://kiro.example.com/admin');
   assert.equal(payload.kiroRsKey, 'key-123');
-  assert.equal(payload.kiroRegion, 'ap-southeast-1');
+  assert.equal(Object.prototype.hasOwnProperty.call(payload, 'kiroRegion'), false);
   assert.equal(payload.settingsSchemaVersion, 3);
   assert.equal(payload.settingsState.activeFlowId, 'kiro');
 });
