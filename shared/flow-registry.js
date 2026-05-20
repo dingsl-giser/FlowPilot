@@ -203,7 +203,6 @@
           commands: [
             'paypal-approve',
             'paypal-hosted-email',
-            'paypal-hosted-verification',
             'paypal-hosted-card',
             'paypal-hosted-create-account',
             'paypal-hosted-review',

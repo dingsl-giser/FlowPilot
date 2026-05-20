@@ -494,6 +494,66 @@ test('PayPal no-card binding OpenAI checkout node submits hosted page and comple
   });
 });
 
+test('PayPal hosted email node completes when Next navigation drops the content response', async () => {
+  const events = [];
+  let currentUrl = 'https://www.paypal.com/checkoutweb/pay?token=EC-test';
+  const executor = api.createPlusCheckoutCreateExecutor({
+    addLog: async (message, level = 'info', options = {}) => events.push({ type: 'log', message, level, options }),
+    chrome: {
+      tabs: {
+        get: async (tabId) => ({ id: tabId, url: currentUrl, status: 'complete' }),
+      },
+    },
+    completeNodeFromBackground: async (step, payload) => events.push({ type: 'complete', step, payload }),
+    ensureContentScriptReadyOnTabUntilStopped: async (source, tabId, options) => events.push({ type: 'ready', source, tabId, options }),
+    getState: async () => ({
+      hostedCheckoutPhoneNumber: '(415) 555-1234',
+    }),
+    registerTab: async (source, tabId) => events.push({ type: 'register', source, tabId }),
+    sendTabMessageUntilStopped: async (tabId, source, message) => {
+      events.push({ type: 'tab-message', tabId, source, message });
+      if (message.type === 'PAYPAL_RUN_HOSTED_CHECKOUT_STEP') {
+        currentUrl = 'https://www.paypal.com/checkoutweb/signup?ba_token=BA-test&token=EC-test';
+        return new Promise(() => {});
+      }
+      if (message.type === 'PAYPAL_HOSTED_GET_STATE') {
+        return {
+          hostedStage: currentUrl.includes('/signup')
+            ? 'guest_checkout'
+            : 'pay_login',
+        };
+      }
+      throw new Error(`unexpected message type ${message.type}`);
+    },
+    setState: async (payload) => events.push({ type: 'set-state', payload }),
+    sleepWithStop: async (ms) => events.push({ type: 'sleep', ms }),
+    waitForTabCompleteUntilStopped: async () => events.push({ type: 'tab-complete' }),
+  });
+
+  await executor.executePayPalHostedEmail({
+    plusCheckoutTabId: 85661333,
+    plusHostedCheckoutGuestProfile: {
+      email: 'guest@example.com',
+      phone: '4155551234',
+      address: { street: '1 Main St', city: 'New York', state: 'New York', zip: '10001' },
+    },
+  });
+
+  assert.equal(currentUrl.includes('/signup'), true);
+  assert.equal(
+    events.some((event) => event.type === 'complete' && event.step === 'paypal-hosted-email'),
+    true
+  );
+  assert.equal(
+    events.some((event) => event.type === 'log' && /已检测到 PayPal 进入后续页面（guest_checkout）/.test(event.message)),
+    true
+  );
+  assert.equal(
+    events.some((event) => event.type === 'tab-message' && event.message.type === 'PAYPAL_RUN_HOSTED_CHECKOUT_STEP'),
+    true
+  );
+});
+
 test('Plus checkout content routes billing operations through the operation delay gate', async () => {
   const { checkoutEvents, send } = createCheckoutContentHarness();
 

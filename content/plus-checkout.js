@@ -252,11 +252,22 @@ async function clickHostedSubmitButton() {
   });
   document.activeElement?.blur?.();
   await sleep(300);
+  const buttonTextBeforeClick = getActionText(button) || '订阅';
+  log(`Plus Checkout：准备点击“${buttonTextBeforeClick}”提交 OpenAI Checkout。`);
   simulateClick(button);
-  await sleep(1200);
+  await sleep(300);
+  const buttonTextAfterClick = getActionText(button);
+  if (buttonTextAfterClick && SUBSCRIBE_PROCESSING_TEXT_PATTERN.test(buttonTextAfterClick)) {
+    log(`Plus Checkout：已点击“${buttonTextBeforeClick}”，按钮进入“${buttonTextAfterClick}”，正在等待 PayPal 跳转。`);
+  } else {
+    log(`Plus Checkout：已点击“${buttonTextBeforeClick}”，正在等待 PayPal 跳转。`);
+  }
+  await sleep(900);
   return {
     clicked: true,
     buttonText: getActionText(button),
+    buttonTextBeforeClick,
+    buttonTextAfterClick,
     hostedVerificationVisible: hasHostedOpenAiVerificationDialog(),
   };
 }
